@@ -1,0 +1,454 @@
+---
+title: "Homework#03_R10241209_Answer"
+author: "Meng-Hsin, Wu"
+date: "2022/3/5"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Data review
+------
+Let's check the original datasets.
+First, it's the dataset with density of fish and copepod at each station
+```{r check the original dataset, echo=FALSE}
+
+setwd("~/Courses of 110 semester-2/Intensive Statistical Ecology/0303/mock_dataTS/mock_dataTS")
+library(readxl)
+FishCopData<-read_xls('enviANDdensity.xls')
+FishCopData<-as.data.frame(FishCopData)
+FishCopDens<-FishCopData[11:12]
+colnames(FishCopDens)<-c('Fish', 'Copepod')
+
+FishCopDens
+
+```
+
+Question_1
+--------
+Then let's compute the mean and SE(mean) value of fish and copepod following normal theory.
+```{r mean SE normal theory, echo=FALSE}
+
+FishMean<-sum(FishCopDens$Fish)/length(FishCopDens$Fish)
+
+CopMean<-sum(FishCopDens$Copepod)/length(FishCopDens$Copepod)
+
+FishSeMean<-sqrt(sum((FishCopDens$Fish-FishMean)^2)*(1/(34*33)))
+CopSeMean<-sqrt(sum((FishCopDens$Copepod-CopMean)^2)*(1/(34*33)))
+
+paste('Mean density of fish:',FishMean)
+paste('Mean density of copepod:', CopMean)
+paste('SE(mean) of fish:', FishSeMean)
+paste('SE(mean) of copepod:', CopSeMean)
+
+
+
+```
+Question_1: Bootstrap
+-------
+Now let's compute the mean and SE(mean) of fish and copepod according to the bootstrap dataset.
+```{r bootstrap function, echo=FALSE}
+#####Constructing function of SE(mean) for bootstrap#########
+Boot.SE<-function(x, FUN='mean'){
+  
+  is.array(x)
+  n<-length(x)
+  if(FUN=='mean'){
+  SEmean<-sqrt(sum((x-mean(x))^2)*(1/(n-1)))
+  
+  return(SEmean)
+  }else if(FUN=='median'){
+  SEmedian<-sqrt(sum((x-median(x))^2)*(1/(n-1)))
+    
+    return(SEmedian)
+    
+  }
+}
+#######################################
+####Constructing bootstrap function########
+MyBootstrap<-function(x, time, FUN='mean'){
+is.array(x)
+n<-length(x)
+BootFUN<-c()
+
+if(FUN=='mean'){
+for(i in 1:time){
+rlist<-ceiling(runif(n, min=0, max=n))
+Bootlist<-x[rlist]
+BootFUN[i]<-mean(Bootlist)
+}
+  return(mean(BootFUN))
+  }else if(FUN=='median'){
+  for(i in 1:time){
+    rlist<-ceiling(runif(n, min=0, max=n))
+    Bootlist<-x[rlist]
+    BootFUN[i]<-median(Bootlist)
+  }
+    return(median(BootFUN))
+    } else if(FUN=='SE(mean)'){
+    for(i in 1:time){
+      rlist<-ceiling(runif(n, min=0, max=n))
+      Bootlist<-x[rlist]
+      BootFUN[i]<-mean(Bootlist)
+      }
+      return(Boot.SE(BootFUN, FUN='mean'))
+    } else if(FUN=='SE(median)'){
+    
+      for(i in 1:time){
+        rlist<-ceiling(runif(n, min=0, max=n))
+        Bootlist<-x[rlist]
+        BootFUN[i]<-median(Bootlist)
+      }
+      return(Boot.SE(BootFUN, FUN='mean'))
+  }
+}
+###########################################
+
+FishDens<-FishCopDens$Fish #Extracting fish density as one object
+CopDens<-FishCopDens$Copepod #Extracting copepod density as one object
+
+
+FishBTmean<-MyBootstrap(FishDens, 1000, FUN='mean')
+CopBTmean<-MyBootstrap(CopDens, 1000, FUN='mean')
+
+paste('Bootstrap mean of fish density: ',
+      FishBTmean)
+paste('Bootstrap mean of Copepod density: ',
+      CopBTmean)
+
+FishBTSEmean<-MyBootstrap(FishDens, 1000,
+                          'SE(mean)')
+CopBTSEmean<-MyBootstrap(CopDens, 1000,
+                          'SE(mean)')
+paste('Bootstrap SE(mean) of fish density: ',
+      FishBTSEmean)
+paste('Bootstrap SE(mean) of copepod density: ', CopBTSEmean)
+
+```
+
+Question_1: Histogram of bootstrapped mean
+---
+Let's check the distribution of our bootstrapped mean of fish and copepod.
+```{r BT histogram, echo=FALSE}
+#####Constructing a function for returning bootstrapped array########
+##########################################
+MyBootstrapArray<-function(x, time, FUN='mean'){
+  is.array(x)
+  n<-length(x)
+  BootFUN<-c()
+  
+  if(FUN=='mean'){
+    for(i in 1:time){
+      rlist<-ceiling(runif(n, min=0, max=n))
+      Bootlist<-x[rlist]
+      BootFUN[i]<-mean(Bootlist)
+    }
+    return(BootFUN)
+  }else if(FUN=='median'){
+    for(i in 1:time){
+      rlist<-ceiling(runif(n, min=0, max=n))
+      Bootlist<-x[rlist]
+      BootFUN[i]<-median(Bootlist)
+    }
+    return(BootFUN)
+  }
+}
+#######End of construction##########
+
+#Histograms#
+hist(MyBootstrapArray(FishDens, 
+    time=1000, FUN='mean'),
+     breaks=80, las=1, main='Bootstrapped mean of fish', xlab='Bootstrapped mean value')
+hist(MyBootstrapArray(CopDens, 
+    time=1000, FUN='mean'),
+     breaks=80, las=1,
+    main='Bootstrapped mean of copepods',
+    xlab='Bootstrapped mean value')
+
+```
+
+
+Question_2
+----
+Now let's use bootstrapping to compute median and SE(median) of fish and copepod density
+```{r BT median, echo=FALSE}
+FishBTmedian<-MyBootstrap(FishDens, time=1000, 
+            FUN='median')
+FishBTSEmedian<-MyBootstrap(FishDens, time=1000, 
+            FUN='SE(median)')
+CopBTmedian<-MyBootstrap(CopDens, time=1000,
+            FUN='median')
+CopBTSEmedian<-MyBootstrap(CopDens, time=1000, 
+            FUN='SE(median)')
+
+paste('Bootstrap median of fish density: ',
+      FishBTmedian)
+paste('Bootstrap median of Copepod density: ',
+      CopBTmedian)
+
+paste('Bootstrap SE(median) of fish density: ',
+      FishBTSEmedian)
+paste('Bootstrap SE(median) of Copepod density: ',
+      CopBTSEmedian)
+
+```
+
+Question_2: Histogram for bootstrapped medians
+-------
+Let's plot the distribution of bootstrapped median of fish and copepod density.
+```{r histogram BT median, echo=FALSE}
+hist(MyBootstrapArray(FishDens, 
+    time=1000, FUN='median'),
+     breaks=100, 
+    las=1, 
+    main='Bootstrapped median of fish density',
+    xlab='Bootstrapped median value')
+hist(MyBootstrapArray(CopDens, 
+     time=1000, FUN='median'),
+     breaks=100,
+     las=1, 
+    main='Bootstrapped median of copepod density',
+    xlab='Bootstrapped median value')
+
+
+```
+
+Question_3
+-----
+Plot the relationship between fish and copepod with regression line.
+```{r regression line, echo=FALSE}
+######Constructing function for computing simple correlation coefficient and the intercept.###########
+
+#####Regression Coefficient#############
+########################################
+MylmCoefficient<-function(x,y){
+  is.array(x)
+  is.array(y)
+beta1_up<-sum((x-mean(x))*(y-mean(y)))
+beta1_down<-sum((x-mean(x))^2)
+beta1<-beta1_up/beta1_down
+beta0<-mean(y)-beta1*mean(x)
+
+return(c(beta1, beta0))
+}
+
+#Using copepod density to predict fish density#
+FishCopCoef<-MylmCoefficient(CopDens, FishDens)
+
+#Plot the correlation#
+plot(Fish~Copepod, data=FishCopDens, pch=20,
+     las=1)
+abline(a=FishCopCoef[2], 
+       b=FishCopCoef[1],
+       col='red')
+title(sub=paste('y=',round(FishCopCoef[1], digits=3),'x+',
+round(FishCopCoef[2], digits=3)),
+main='Linear Model of Copepod and Fish')
+
+```
+
+Question_3: Coefficients
+---
+Compute beta_1 and beta_0 within the formula of the linear model.
+```{r showing the coefficients, echo=FALSE}
+#Extracting the two coefficients
+beta_0<-FishCopCoef[2]
+beta_1<-FishCopCoef[1]
+
+paste('Correlation coefficient (beta_1):',
+      beta_1)
+paste('Intercept (beta_0):',
+      beta_0)
+
+```
+
+Question_3: Bootstrapped SE of coefficients
+---
+Let's compute SE(beta_1) and SE(beta_0) from bootstrapped dataset respectively.
+```{r BT coefficients, echo=FALSE}
+######Using for-loop to compute bootstrapped coefficients########
+corr.coef<-c()
+corr.interc<-c()
+FishCopSelect<-list()
+for(i in 1:1000){
+  
+  rNumber<-ceiling(runif(34, min=0, max=34))
+  FishCopSelect<-FishCopDens[rNumber,]
+  corr.coef[i]<-MylmCoefficient(FishCopSelect$Copepod, FishCopSelect$Fish)[1]
+  corr.interc[i]<-MylmCoefficient(FishCopSelect$Copepod, FishCopSelect$Fish)[2]
+}
+##Showing the SE of both coefficients##
+beta_1_BTSE<-Boot.SE(corr.coef, FUN='mean')
+beta_0_BTSE<-Boot.SE(corr.interc, FUN='mean')
+
+paste('SE(beta_1): ', beta_1_BTSE)
+paste('SE(beta_0): ', beta_0_BTSE )
+#hist(corr.coef, breaks=100)
+#hist(corr.interc, breaks=100)
+
+
+```
+
+Question_3: Histograms of bootstrapped coefficients
+---
+Let's plot the distribution of the two coefficients from the bootstrapped dataset.
+```{r BT coefficient histogram, echo=FALSE}
+hist(corr.coef, breaks=100,
+     main='Distribution of correlation coefficients',
+     xlab='correlation coefficients',
+     las=1)
+hist(corr.interc, breaks=100,
+      main='Distribution of intercepts',
+     xlab='intercepts',
+     las=1)
+```
+
+
+Continued_1
+---
+Compute the mean and SE(mean) of fish and copepod density from jackknife dataset.
+```{r JK mean and SE, echo=FALSE}
+#########Constructing function for Jackknife#########
+####################################################
+MyJkArray<-function(x, FUN='mean'){
+  is.array(x)
+JKlist<-c()
+if(FUN=='mean'){
+for(i in 1:length(x)){
+JKlist[i]<-mean(x[-i])
+}
+  return(JKlist)
+}else if(FUN=='median'){
+  for(i in 1:length(x)){
+    JKlist[i]<-median(x[-i])
+  }
+  return(JKlist)
+}
+}
+#####End of construction######
+
+
+FishJKmean<-mean(MyJkArray(FishDens, 'mean'))
+
+#hist(FishJKmean)
+CopJKmean<-mean(MyJkArray(CopDens, 'mean'))
+#hist(CopJKmean, breaks=1000)
+
+######Constructing SE function for Jackknife########
+#################################################
+
+JK.SE<-function(x, FUN='mean'){
+  is.array(x)
+  if(FUN=='mean'){
+  xlist<-MyJkArray(x, FUN='mean')
+  }else if(FUN=='median'){
+    xlist<-MyJkArray(x, FUN='median')
+  }
+  n<-length(x)
+  RightPart<-(n-1)/n
+  LeftPart<-sum((xlist-mean(xlist))^2)
+  JKSE<-sqrt(RightPart*LeftPart)
+  return(JKSE)
+}
+#######End of construction########
+
+####SE(mean) of fish and copepod####
+FishJKSE<-JK.SE(FishDens, FUN='mean')
+CopJKSE<-JK.SE(CopDens, FUN='mean')
+
+paste('Jackknife mean of fish density: ', FishJKmean)
+paste('Jackknife mean of copepod density: ', CopJKmean)
+
+paste('Jackknife SE(mean) of fish density: ', FishJKSE)
+paste('Jackknife SE(mean) of copepod density: ', CopJKSE)
+
+
+```
+
+Continued_1: Histogram for Jackknife
+-----
+Try to plot the histogram of jackknife means of fish and copepod.
+```{r JK means histogram, echo=FALSE}
+hist(MyJkArray(FishDens, 'mean'), breaks=20,
+     las=1,
+     main='Distribution of jackknife means of fish',
+     xlab='jackknife means')
+
+hist(MyJkArray(CopDens, 'mean'), breaks=20,
+     las=1,
+     main='Distribution of jackknife means of copepod',
+     xlab='jackknife means')
+
+
+```
+
+
+Continued_2
+---
+The regression coefficients calculated from formula are as answers in Question_3. Let's compute the SE(beta_1) and SE(beta_0) from jackknife datasets.
+```{r regression coefficient JK, echo=FALSE}
+#####Construct the function for computing SE from JK array##########
+##################################################
+
+JK.SE.forArray<-function(JKarray){
+  is.array(JKarray)
+  n<-length(JKarray)
+  RightPart<-(n-1)/n
+  LeftPart<-sum((JKarray-mean(JKarray))^2)
+  JKSE<-sqrt(RightPart*LeftPart)
+  return(JKSE)
+}
+########End of construction########
+
+
+##Get the resampled dataset##
+JKcorr<-array()
+JKinterc<-c()
+for(i in 1:34){
+JKcorrList<-FishCopDens[-i, ]
+JKcorr[i]<-MylmCoefficient(JKcorrList$Copepod,
+                        JKcorrList$Fish)[1]
+JKinterc[i]<-MylmCoefficient(JKcorrList$Copepod,
+                             JKcorrList$Fish)[2]
+}
+
+#Send into function for getting SE#
+beta_1_JKSE<-JK.SE.forArray(JKcorr)
+beta_0_JKSE<-JK.SE.forArray(JKinterc)
+
+paste('Jackknife SE(correlation coefficient(beta_1)): ', beta_1_JKSE)
+paste('Jackknife SE(Intercept(beta_0)): ', beta_0_JKSE)
+```
+
+Continued_2: Histogram of jackknife coefficients
+-------
+Let's plot the distribution of the two jackknife coefficients.
+```{r histogram JK coefficients, echo=FALSE}
+
+hist(JKcorr,
+     breaks=20,
+     las=1,
+     main='Distribution of jackknife beta_1',
+     xlab='jackknife correlation coefficients')
+hist(JKinterc,
+     breaks=20,
+     las=1,
+     main='Distribution of jackknife beta_0',
+     xlab='jackknife intercepts')
+
+
+
+```
+
+Continued_3: Comparison
+----
+Compare the estimates from bootstrapping, jackknife and normal theory.
+
+We can notice that bootstrapping can generate more data if the original dataset is a small or median size dataset. Jackknife method can only generate n sets of resampled data that n equals to the size of the original dataset. Therefore from the histogram we can notice the the histogram of jackknife cannot welly represent the condition in population unless we increase the sampling size.
+In addition, the parameters in bootstrapped data are distributed in a pattern close to normal distribution.
+If we disregard the distribution but simply compare the value of mean, SE(mean), SE(beta_1), SE(beta_0) among the three method, we can notice that in both mean and SE(mean), values calculated from jackknife method are close to normal theory. The bootstrapped values are slightly smaller than values from other methods. Nevertheless, Standard errors of mean, correlation coefficient, and intercept are smaller in bootstrapped dataset which means that the uncertainty of bootstrapping method are lower. 
+We can conclude that bootstrapping in this dataset provides higher resampling size and lower uncertainty. The result from jackknife are closer to normal theory while the uncertainty is higher.

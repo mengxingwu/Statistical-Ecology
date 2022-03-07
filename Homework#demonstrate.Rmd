@@ -31,7 +31,7 @@ FishCopDens
 Question_1
 --------
 Then let's compute the mean and SE(mean) value of fish and copepod following normal theory.
-```{r mean SE normal theory, echo=FALSE}
+```{r mean SE normal theory, eval=FALSE}
 
 FishMean<-sum(FishCopDens$Fish)/length(FishCopDens$Fish)
 
@@ -176,6 +176,8 @@ Question_2
 ----
 Now let's use bootstrapping to compute median and SE(median) of fish and copepod density
 ```{r BT median, echo=FALSE}
+FishMedian<-median(FishDens)
+CopMedian<-median(CopDens)
 FishBTmedian<-MyBootstrap(FishDens, time=1000, 
             FUN='median')
 FishBTSEmedian<-MyBootstrap(FishDens, time=1000, 
@@ -185,6 +187,10 @@ CopBTmedian<-MyBootstrap(CopDens, time=1000,
 CopBTSEmedian<-MyBootstrap(CopDens, time=1000, 
             FUN='SE(median)')
 
+
+########################################
+paste('Median of fish density: ', FishMedian)
+paste('Median of Copepod density: ', CopMedian)
 paste('Bootstrap median of fish density: ',
       FishBTmedian)
 paste('Bootstrap median of Copepod density: ',

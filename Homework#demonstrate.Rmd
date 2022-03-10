@@ -31,7 +31,7 @@ FishCopDens
 Question_1
 --------
 Then let's compute the mean and SE(mean) value of fish and copepod following normal theory.
-```{r mean SE normal theory, eval=FALSE}
+```{r mean SE normal theory, echo=FALSE}
 
 FishMean<-sum(FishCopDens$Fish)/length(FishCopDens$Fish)
 
@@ -76,36 +76,41 @@ n<-length(x)
 BootFUN<-c()
 
 if(FUN=='mean'){
-for(i in 1:time){
+for(i in 1:time-1){
 rlist<-ceiling(runif(n, min=0, max=n))
 Bootlist<-x[rlist]
 BootFUN[i]<-mean(Bootlist)
 }
+  BootFUN[time]<-mean(x)
   return(mean(BootFUN))
   }else if(FUN=='median'){
-  for(i in 1:time){
+  for(i in 1:time-1){
     rlist<-ceiling(runif(n, min=0, max=n))
     Bootlist<-x[rlist]
     BootFUN[i]<-median(Bootlist)
   }
-    return(median(BootFUN))
+    BootFUN[time]<-median(x)
+    return(mean(BootFUN))
     } else if(FUN=='SE(mean)'){
-    for(i in 1:time){
+    for(i in 1:time-1){
       rlist<-ceiling(runif(n, min=0, max=n))
       Bootlist<-x[rlist]
       BootFUN[i]<-mean(Bootlist)
-      }
+    }
+      BootFUN[time]<-mean(x)
       return(Boot.SE(BootFUN, FUN='mean'))
     } else if(FUN=='SE(median)'){
     
-      for(i in 1:time){
+      for(i in 1:time-1){
         rlist<-ceiling(runif(n, min=0, max=n))
         Bootlist<-x[rlist]
         BootFUN[i]<-median(Bootlist)
       }
+      BootFUN[time]<-median(x)
       return(Boot.SE(BootFUN, FUN='mean'))
   }
 }
+
 ###########################################
 
 FishDens<-FishCopDens$Fish #Extracting fish density as one object
@@ -142,21 +147,25 @@ MyBootstrapArray<-function(x, time, FUN='mean'){
   BootFUN<-c()
   
   if(FUN=='mean'){
-    for(i in 1:time){
+    for(i in 1:time-1){ 
+      #bootstrap needs to include the original data
       rlist<-ceiling(runif(n, min=0, max=n))
       Bootlist<-x[rlist]
       BootFUN[i]<-mean(Bootlist)
     }
+    BootFUN[time]<-mean(x)
     return(BootFUN)
   }else if(FUN=='median'){
-    for(i in 1:time){
+    for(i in 1:time-1){
       rlist<-ceiling(runif(n, min=0, max=n))
       Bootlist<-x[rlist]
       BootFUN[i]<-median(Bootlist)
     }
+    BootFUN[time]<-median(x)
     return(BootFUN)
   }
 }
+
 #######End of construction##########
 
 #Histograms#
@@ -454,7 +463,39 @@ Continued_3: Comparison
 ----
 Compare the estimates from bootstrapping, jackknife and normal theory.
 
+```{r comparison, echo=FALSE}
+FishResult<-data.frame(mean=c(FishMean, FishBTmean, FishJKmean),
+           median=c(FishMedian, FishBTmedian, NA),
+           SE_mean=c(FishSeMean, FishBTSEmean, FishJKSE),
+           SE_median=c(NA, FishBTSEmedian, NA))
+row.names(FishResult)<-c('Normal theory',
+                         'Bootstrapping',
+                         'Jackknife')
+FishResult
+
+
+#########
+CopResult<-data.frame(mean=c(CopMean, CopBTmean, CopJKmean),
+           median=c(CopMedian, CopBTmedian, NA),
+           SE_mean=c(CopSeMean, CopBTSEmean, CopJKSE),
+           SE_median=c(NA, CopBTSEmedian, NA))
+row.names(CopResult)<-c('Normal theory',
+                         'Bootstrapping',
+                         'Jackknife')
+CopResult
+
+##########
+
+
+CorrResult<-data.frame(coefficient=c(beta_1, beta_0),
+           SE_Bootstrapping=c(beta_1_BTSE, beta_0_BTSE),
+           SE_Jackknife=c(beta_1_JKSE, beta_0_JKSE))
+row.names(CorrResult)<-c(expression('beta 1'), expression('beta 0'))
+
+CorrResult
+
+```
+
 We can notice that bootstrapping can generate more data if the original dataset is a small or median size dataset. Jackknife method can only generate n sets of resampled data that n equals to the size of the original dataset. Therefore from the histogram we can notice the the histogram of jackknife cannot welly represent the condition in population unless we increase the sampling size.
 In addition, the parameters in bootstrapped data are distributed in a pattern close to normal distribution.
-If we disregard the distribution but simply compare the value of mean, SE(mean), SE(beta_1), SE(beta_0) among the three method, we can notice that in both mean and SE(mean), values calculated from jackknife method are close to normal theory. The bootstrapped values are slightly smaller than values from other methods. Nevertheless, Standard errors of mean, correlation coefficient, and intercept are smaller in bootstrapped dataset which means that the uncertainty of bootstrapping method are lower. 
-We can conclude that bootstrapping in this dataset provides higher resampling size and lower uncertainty. The result from jackknife are closer to normal theory while the uncertainty is higher.
+Generally speaking, Jackknife and normal theory show identical values of the targeted parameters. The values generated from bootstrapping are slightly different from those generated from normal theory and jackknife method, which could be resulted from the higher resampling size. However, the differences among the three method is small. 

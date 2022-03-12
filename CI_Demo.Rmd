@@ -1,0 +1,250 @@
+---
+title: "Homework#Week04#CI"
+author: "Meng-Hsin, Wu"
+date: "2022/3/12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+First, we need to check the original datasets.
+--------
+```{r data checking, echo=F}
+rm(list=ls())
+setwd("~/Courses of 110 semester-2/Intensive Statistical Ecology/0303/mock_dataTS/mock_dataTS")
+library(readxl)
+FishCopData<-read_xls('enviANDdensity.xls')
+FishCopDens<-FishCopData[11:12]
+colnames(FishCopDens)<-c('Fish', 'Copepod')
+FishDens<-FishCopDens$Fish
+CopDens<-FishCopDens$Copepod
+paste('Density of fish and copepod')
+data.frame(Fish=FishDens, Copepod=CopDens)
+
+
+
+
+
+```
+
+Question_1: Computing coefficients
+-----
+Let's calculate slope and intercept between fish and copepods.
+```{r coefficients, echo=FALSE}
+######Call for my lm function#######
+MylmCoefficient<-function(x,y){
+  is.array(x)
+  is.array(y)
+  beta1_up<-sum((x-mean(x))*(y-mean(y)))
+  beta1_down<-sum((x-mean(x))^2)
+  beta1<-beta1_up/beta1_down
+  beta0<-mean(y)-beta1*mean(x)
+  
+  return(c(beta1, beta0))
+}
+####################################
+paste('Slope=', MylmCoefficient(CopDens, FishDens)[1])
+paste('Intercept=', MylmCoefficient(CopDens, FishDens)[2])
+
+
+```
+
+Question_1: The 95% CI of beta 1
+-----
+Using percentile and bootstrapping
+```{r percentile, echo=FALSE}
+
+corr.coef<-c()
+corr.interc<-c()
+FishCopSelect<-list()
+for(i in 1:999){
+  
+  rNumber<-ceiling(runif(34, min=0, max=34))
+  FishCopSelect<-FishCopDens[rNumber,]
+  corr.coef[i]<-MylmCoefficient(FishCopSelect$Copepod, FishCopSelect$Fish)[1]
+  corr.interc[i]<-MylmCoefficient(FishCopSelect$Copepod, FishCopSelect$Fish)[2]
+}
+corr.coef[1000]<-MylmCoefficient(CopDens, FishDens)[1]
+corr.interc[1000]<-MylmCoefficient(CopDens, FishDens)[2]
+Beta1_Sort<-sort(corr.coef)
+
+Perc.CI<-quantile(Beta1_Sort, c(0.025, 0.975))
+
+paste('The 95% CI falls between',
+      quantile(Beta1_Sort, c(0.025, 0.975))[1],
+      'and',
+      quantile(Beta1_Sort, c(0.025, 0.975))[2]
+      )
+
+
+
+```
+
+
+Question_1: The 95% CI of beta 1
+-----
+Using BC
+```{r beta1 BC, echo=FALSE}
+#Using the mean value as theta_hat
+Beta1_origin<-mean(corr.coef)
+
+#Finding G(theta)
+G_theta<-ecdf(Beta1_Sort)(Beta1_origin)
+
+#Building a sequence of normal distribution
+Gauss<-rnorm(1000, mean=0)
+
+#Project G(theta) to  Gaussian distribution
+Z0<-quantile(Gauss, probs=G_theta)
+Z0<-as.numeric(Z0)
+
+#Get the two limits of CI in Gaussian distribution
+Z1<-2*Z0-1.96
+Z2<-2*Z0+1.96
+G.sort<-sort(rnorm(1000, mean=0))
+prob.return.1<-ecdf(G.sort)(Z1)
+prob.return.2<-ecdf(G.sort)(Z2)
+#Project the CL bact to the original distribution
+BC.CI<-quantile(Beta1_Sort, c(prob.return.1, prob.return.2))
+
+paste('The 95% CI falls between',
+      BC.CI[1],
+      'and',
+      BC.CI[2]
+      )
+
+```
+
+Question_1: The 95% CI of beta 1
+-----
+Using BCa
+```{r Slope CI BCa, echo=FALSE}
+################################
+JKcorr<-array()
+JKinterc<-c()
+for(i in 1:34){
+  JKcorrList<-FishCopDens[-i, ]
+  JKcorr[i]<-MylmCoefficient(JKcorrList$Copepod,
+                             JKcorrList$Fish)[1]
+  JKinterc[i]<-MylmCoefficient(JKcorrList$Copepod,
+                               JKcorrList$Fish)[2]
+}
+#############################################
+####Compute a################
+JKcorr.mean<-mean(JKcorr)
+UpperPart<-sum((JKcorr.mean-JKcorr)^3)
+LowerPart<-6*sum((JKcorr.mean-JKcorr)^2)^(3/2)
+a.BCa<-UpperPart/LowerPart
+G.theta.BCa<-ecdf(G.sort)(Beta1_origin) #G(theta)
+Z0.BCa<-quantile(Gauss, G.theta.BCa)
+Z0.BCa<-as.numeric(Z0.BCa) 
+#Standardize Z0
+Z1.BCa<-Z0.BCa+(Z0.BCa-1.96)/(1-a.BCa*(Z0.BCa-1.96))
+Z2.BCa<-Z0.BCa+(Z0.BCa+1.96)/(1-a.BCa*(Z0.BCa+1.96))
+#Check the position of standardized CL
+Prob.BCa.1<-ecdf(G.sort)(Z1.BCa)
+Prob.BCa.2<-ecdf(G.sort)(Z2.BCa)
+# Re-project the position back to the bootstrapped cdf
+BCa.CI<-quantile(Beta1_Sort, c(Prob.BCa.1, Prob.BCa.2))
+paste('The 95% CI falls between',
+      BCa.CI[1],
+      'and',
+      BCa.CI[2]
+      )
+
+
+```
+
+Before Question_2, check the species data
+------
+The density of O.venusta and C.pauper.
+```{r import SP data, echo=FALSE, warning=FALSE, message=FALSE}
+setwd("C:/Users/hp/Documents/Courses of 110 semester-2/Intensive Statistical Ecology/0303/mock_dataTS/mock_dataTS")
+CopData<-read_xls('copepod_datasheet.xls',
+                  col_names =T)
+CopData<-t(CopData)
+CopData<-as.data.frame(CopData)
+row.names(CopData)<-CopData$V1
+CopData<-CopData[-1,]
+colnames(CopData)<-CopData[1,]
+CopData<-CopData[-1,]
+#str(CopData[1:182])
+##Confirm that all data in this data frame are characters
+CopSPData<-sapply(CopData[2:182], FUN=as.numeric)
+CopSPDensity<-CopSPData*CopDens #Get the species density
+
+CopSPDensity<-as.data.frame(CopSPDensity)
+OVdensity<-CopSPDensity$`Oncaea venusta`
+CPdensity<-CopSPDensity$`Canthocalanus pauper`
+OVCP<-cbind(OV=OVdensity, CP=CPdensity)
+OVCP<-as.data.frame(OVCP)
+OVCP
+
+
+
+```
+
+Question_2: CI(theta1-theta2)
+-----
+Assume that the deviations are normally distributed
+```{r CI(theta1-theta2), echo=F}
+#######Bootstrapping############
+
+OVlist<-c()
+CPlist<-c()
+for(i in 1:999){
+  
+  rNumber<-ceiling(runif(34, 
+                min=0, max=34))
+  ovcpSelect<-OVCP[rNumber,]
+  OVlist[i]<-mean(ovcpSelect$OV)
+  CPlist[i]<-mean(ovcpSelect$CP)
+}
+
+OVlist[1000]<-mean(OVCP$OV)
+CPlist[1000]<-mean(OVCP$CP)
+OVCPdelta<-OVlist-CPlist
+#hist(OVCPdelta, breaks=100) 
+#check the distribution of delta
+
+#####Use Jackknife to compute a ########
+OVCPjk<-c()
+
+for(i in 1:34){
+ OVCPjk[i]<-mean(OVCP[-i,]$OV)-mean(OVCP[-i,]$CP)
+}
+
+OVCPjkMean<-mean(OVCPjk)
+
+ovcpUpper<-sum((OVCPjkMean-OVCPjk)^3)
+ovcpLower<-6*(sum((OVCPjkMean-OVCPjk)^2))^(3/2)
+ovcp.a<-ovcpUpper/ovcpLower
+##################################
+
+OVCPsort<-sort(OVCPdelta)
+OVCP.CI<-quantile(OVCPsort, probs=c(0.025, 0.975))
+#0 doesn't fall between 888.8114 and 14836.0621,
+##Significant does occur.
+OVCPdelta.mean<-mean(OVCPsort)
+OVCP.Z0<-quantile(G.sort,
+  probs=ecdf(OVCPsort)(OVCPdelta.mean))
+OVCP.Z0<-as.numeric(OVCP.Z0)
+#get Z0 for BCa
+OVCP.Z1<-OVCP.Z0+(OVCP.Z0-1.96)/(1-ovcp.a*(OVCP.Z0-1.96))
+OVCP.Z2<-OVCP.Z0+(OVCP.Z0+1.96)/(1-ovcp.a*(OVCP.Z0+1.96))
+OVCP.prob1<-ecdf(Gauss)(OVCP.Z1)
+OVCP.prob2<-ecdf(Gauss)(OVCP.Z2)
+OVCP.BCa.CI<-quantile(OVCPsort, probs=c(OVCP.prob1, 
+                           OVCP.prob2))
+#Zero is not included, significant is proved.
+
+paste('95% CI of theta-deviations falls between',
+      OVCP.BCa.CI[1], 'and',
+      OVCP.BCa.CI[2])
+paste('0 is not included, the two species show significant difference between their density')
+
+
+
+```

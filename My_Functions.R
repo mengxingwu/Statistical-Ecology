@@ -173,5 +173,94 @@ JK.SE.forArray<-function(JKarray){
   return(JKSE)
 }
 #########################################
-
-
+########Correlation p value###################
+MyCorrP<-function(x, y, n=5000){
+  yPermute<-myPermutation(y, n)
+  CoeffRandom<-c()
+  for(i in 1:5000){
+    CoeffRandom[i]<-MylmCoefficient(x, as.vector(as.matrix(yPermute[i])))[1]
+  }
+  Beta1<-MylmCoefficient(x,y)[1]
+  if(Beta1>max(CoeffRandom)|Beta1<min(CoeffRandom)){
+    return(0)
+  }else if(Beta1>median(CoeffRandom)){
+    Pvalue<-1-myECDF(CoeffRandom, Beta1)
+    return(Pvalue)
+  }else if(Beta1<=median(CoeffRandom)){
+    Pvalue<-myECDF(CoeffRandom, Beta1)
+    return(Pvalue)
+  }
+  #Pvalue<-1-myECDF(CoeffRandom, Beta1)
+  #return(Pvalue)
+}
+##################################################
+############P value of difference between two groups###################
+DiffMeanP<-function(x, y, n=5000){
+  PermuteLs<-myPermutPairs(x, y, n)
+  xPermute<-PermuteLs[[1]]
+  yPermute<-PermuteLs[[2]]
+  xMean<-Mysapply(xPermute, 'mean')
+  yMean<-Mysapply(yPermute, 'mean')
+  xyDiff<-xMean-yMean
+  xyDiff.o<-mean(x)-mean(y)
+  if(xyDiff.o>max(xyDiff)|xyDiff.o<min(xyDiff)){
+    return(0)
+  }else if(xyDiff.o>median(xyDiff)){
+    return(1-myECDF(xyDiff, xyDiff.o))
+  }else if(xyDiff.o<median(xyDiff)){
+    return(myECDF(xyDiff, xyDiff.o))
+  }else if(xyDiff.o==median(xyDiff)){
+    return(1)
+  }
+  #myECDF(xyDiff, xyDiff.o)
+}
+###############################################
+####Random sampling with replacement###########
+mySampling<-function(n){
+  R<-c()
+  StudentLeft<-list()
+  StudentLeft[[1]]<-c(1:n)
+  StudentSelect<-c()
+  for(i in 1:n){
+    R[i]<-ceiling(runif(1, 0, length(StudentLeft[[i]])))  
+    StudentLeft[[i+1]]<-StudentLeft[[i]][-R[i]]
+    StudentSelect[i]<-StudentLeft[[i]][R[i]]
+  }
+  StudentSelect[[n]]<-StudentLeft[[n]]
+  return(StudentSelect)
+}
+#############################################
+#####Permutation for single vector#########
+myPermutation<-function(x, n=5000){
+  is.array(x)
+  permute<-as.data.frame(matrix(nrow=length(x), ncol=n))
+  for(i in 1:n){
+    sequence<-mySampling(length(x))
+    permute[i]<-x[sequence]
+  }
+  return(permute)
+}
+#########Permutation for paired dataset##########
+myPermutPairs<-function(x, y, n=5000){
+  is.array(x)
+  is.array(y)
+  bind<-c(x,y)
+  permute<-as.data.frame(matrix(nrow=length(bind), ncol=n))
+  
+  for(i in 1:n){
+    sequence<-mySampling(length(bind))
+    permute[i]<-bind[sequence]
+  }
+  PermuteX<-permute[1:length(x),]
+  PermuteY<-permute[(length(x)+1):length(bind), ]
+  # permute.xy<-as.data.frame(matrix(nrow=length(x),
+  #ncol=2*n))
+  #for(i in 1:n){
+  #  permute.xy[2*i-1]<-PermuteX[i]
+  # permute.xy[2*i]<-PermuteY[i]
+  
+  #}
+  
+  Result<-list(X=PermuteX, Y=PermuteY)
+  return(Result)
+}

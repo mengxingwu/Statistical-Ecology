@@ -157,34 +157,50 @@ myPercentile<-function(x, prob){
     value<-x.sort[position1]}
   return(value)
 }
-
-FishCopPermute<-myPermutPairs(CopDens, FishDens, 5000)
-FishPermute<-FishCopPermute[[2]]
-CopPermute<-FishCopPermute[[1]]
-#paste('Let us check the randomized fish dataset')
-#head(FishPermute)
-#paste('Let us check the randomized copepod dataset')
-#head(CopPermute)
-beta1_Permute<-c()
+##################################################
+###########Correlation p value####################
+########Correlation p value###################
+MyCorrP<-function(x, y, n=5000){
+yPermute<-myPermutation(y, n)
+CoeffRandom<-c()
 for(i in 1:5000){
-  
-  beta1_Permute[i]<-MylmCoefficient(as.vector(as.matrix(CopPermute[i])), 
-                                    as.vector(as.matrix(FishPermute[i])))[1]
-  
+  CoeffRandom[i]<-MylmCoefficient(x, as.vector(as.matrix(yPermute[i])))[1]
+}
+Beta1<-MylmCoefficient(x,y)[1]
+if(Beta1>max(CoeffRandom)|Beta1<min(CoeffRandom)){
+  return(0)
+}else if(Beta1>median(CoeffRandom)){
+  Pvalue<-1-myECDF(CoeffRandom, Beta1)
+  return(Pvalue)
+}else if(Beta1<=median(CoeffRandom)){
+  Pvalue<-myECDF(CoeffRandom, Beta1)
+  return(Pvalue)
+}
+#Pvalue<-1-myECDF(CoeffRandom, Beta1)
+#return(Pvalue)
+}
+##################################################
+FishPermute2<-myPermutation(FishDens, 5000)
+CoeffRandom<-c()
+for(i in 1:5000){
+ CoeffRandom[i]<-MylmCoefficient(CopDens, as.vector(as.matrix(FishPermute2[i])))[1]
 }
 paste('Check the distribution of randomized beta_1')
-hist(beta1_Permute, breaks=100, main=expression(paste('Permutation of ', beta, '1')), xlab=expression(paste(beta, '1')), las=1)
+hist(CoeffRandom, breaks=100,
+     main=expression(paste('Permutation of ', beta, '1')), xlab=expression(paste(beta, '1')), las=1)
+
 ```
 
 Question_1: Compute P value and examine significance
 ---
 ```{r p value.1, eval=FALSE}
-Beta1<-MylmCoefficient(CopDens, FishDens)[1]
-PvalueBeta1<-1-myECDF(beta1_Permute, Beta1)
+PvalueBeta1<-MyCorrP(CopDens,
+        FishDens,
+        5000)
 
 paste('P value=', PvalueBeta1)
-paste('P>0.05')
-paste('No significant difference from null')
+paste('P<0.05')
+paste('Significant difference from null')
 
 ```
 

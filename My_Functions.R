@@ -264,3 +264,49 @@ myPermutPairs<-function(x, y, n=5000){
   Result<-list(X=PermuteX, Y=PermuteY)
   return(Result)
 }
+#########Replacing sapply##############
+Mysapply<-function(x, FUN='mean'){
+  is.data.frame(x)
+  k<-c()
+  if(FUN=='mean'){
+    for(i in 1:ncol(x)){
+      k[i]<-mean(x[,i])
+    }
+    return(k)
+  }else if(FUN=='median'){
+    for(i in 1:ncol(x)){
+      k[i]<-median(x[,i])
+    }
+    return(k)
+  }else if(FUN=='sum'){
+    for(i in 1:ncol(x)){
+      k[i]<-sum(x[,i])
+    }
+    return(k)
+  }else if(FUN=='max'){
+    for(i in 1:ncol(x)){
+      k[i]<-max(x[,i])
+    }
+    return(k)
+  }else if(FUN=='min'){
+    for(i in 1:ncol(x)){
+      k[i]<-min(x[,i])
+    }
+    return(k)
+  }else if(FUN=='sd'){
+    for(i in 1:ncol(x)){
+      k[i]<-sd(x[,i])
+    }
+    return(k)
+  }else if(FUN=='quantile'){
+    Q<-as.data.frame(matrix(nrow=4, ncol=ncol(x)))
+    for(i in 1:ncol(x)){
+      Q[i]<-myPercentile(as.vector(x[,i]),
+                         c( 0.25, 0.5, 0.75, 1))
+    }
+    row.names(Q)<-c('0.25', '0.5',
+                    '0.75', '1')
+    return(Q)
+  }
+}
+#################################################

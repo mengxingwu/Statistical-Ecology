@@ -201,19 +201,25 @@ DiffMeanP<-function(x, y, n=5000){
   yPermute<-PermuteLs[[2]]
   xMean<-Mysapply(xPermute, 'mean')
   yMean<-Mysapply(yPermute, 'mean')
-  xyDiff<-xMean-yMean
+  xyDiff<-abs(xMean-yMean)
   xyDiff.o<-mean(x)-mean(y)
-  if(xyDiff.o>max(xyDiff)|xyDiff.o<min(xyDiff)){
-    return(0)
-  }else if(xyDiff.o>median(xyDiff)){
-    return(1-myECDF(xyDiff, xyDiff.o))
-  }else if(xyDiff.o<median(xyDiff)){
-    return(myECDF(xyDiff, xyDiff.o))
-  }else if(xyDiff.o==median(xyDiff)){
-    return(1)
-  }
+  #if(xyDiff.o>max(xyDiff)|xyDiff.o<min(xyDiff)){
+  #return(0)
+  #}else if(xyDiff.o>median(xyDiff)){
+  #return(1-myECDF(xyDiff, xyDiff.o))
+  #}else if(xyDiff.o<median(xyDiff)){
+  #return(myECDF(xyDiff, xyDiff.o))
+  #}else if(xyDiff.o==median(xyDiff)){
+  #return(1)
+  #}
   #myECDF(xyDiff, xyDiff.o)
+  #1-myECDF(xyDiff, abs(xyDiff.o))
+  if(abs(xyDiff.o)>max(xyDiff)){
+    return(0)
+  }else return(1-myECDF(xyDiff, abs(xyDiff.o)))
 }
+
+
 ###############################################
 ####Random sampling with replacement###########
 mySampling<-function(n){
@@ -228,6 +234,11 @@ mySampling<-function(n){
   }
   StudentSelect[[n]]<-StudentLeft[[n]]
   return(StudentSelect)
+}
+######Another function to sample with replacement########
+mySampling2<-function(n){
+  sample<-rank(runif(n, min=0, max=n))
+  return(sample)
 }
 #############################################
 #####Permutation for single vector#########
@@ -309,4 +320,32 @@ Mysapply<-function(x, FUN='mean'){
     return(Q)
   }
 }
+Mysapply(iris[1:4], FUN='median')
 #################################################
+myMRPP<-function(data, dist_method, hcut_method, k, n=1000 ){
+  data_dist<-vegdist(data, method=dist_method)
+  tree<-hclust(data_dist, method=hcut_method)
+  groups<-as.factor(cutree(tree, k=k))
+  delta<-c()
+  for(j in 1:n){
+    seq<-sample(c(1:nrow(data)), nrow(data), replace = FALSE)
+    data.permute<-data[seq,]
+    delta_origin<-c()
+    for(i in 1:k){
+      delta_origin[i]<-mean(vegdist(data.permute[which(groups==1),], 
+                                    method=dist_method))
+    }
+    delta[j]<-sum(table(groups)/length(groups)*delta_origin)
+  }
+  delta.1<-c()
+  for(m in 1:k){
+    delta.1[m]<-mean(vegdist(data[which(groups==m),], 
+                             method=dist_method))
+  }
+  delta.2<-sum(table(groups)/length(groups)*delta.1)
+  significance<-ecdf(delta)(delta.2)
+  return(list(group.Delta=delta.1, obs.Delta=delta.2, N=factor(groups), 
+              Prob=significance, 
+              Delta_Permute=delta,
+              expected_Delta=mean(delta)))
+}
